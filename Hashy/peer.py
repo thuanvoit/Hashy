@@ -22,6 +22,21 @@ IMG_READ_HEADER = ['File_Name', 'File_Size', 'Number_Chunks', 'Read_Duration']
 STR_WRITE_HEADER = ['Key', 'Value_Length', 'Write_Duration']
 STR_READE_HEADER = ['Key', 'Value_Length', 'Read_Duration']
 
+DEFINED_IMG = ['1_24kb.jpeg', 
+               '2_360kb.png', 
+               '3_2mb.jpg', 
+               '4_10mb.png', 
+               '5_15mb.png', 
+               '6_18mb.png', 
+               '7_19mb.png']
+
+DEFINED_IMG_NO_EXTENSION = ['1_24kb',
+                            '2_360kb',
+                            '3_2mb',
+                            '4_10mb',
+                            '5_15mb',
+                            '6_18mb',
+                            '7_19mb']
 
 def init_csv(filename, header):
     if not os.path.exists("report"):
@@ -64,10 +79,13 @@ async def run_interactive_loop(node):
             print("Quit")
             break
         elif action == "s":
-            t = (await aioconsole.ainput("Enter type <key,value> [kv], image [img], lorem mode[l]: "))
+            t = (await aioconsole.ainput("Enter type <key,value> [kv], image [img], defined img [ai] lorem mode[l]: "))
             if t == "img":
                 filepath = (await aioconsole.ainput("Enter the file path [.jpg|.jpeg|.png]: "))
                 await set_img(node, filepath.strip())
+            elif t == "ai":
+                for img in DEFINED_IMG:
+                    await set_img(node, f"to_send/{img}")
             elif t == "l":
                 for i in range(0, 1005, 5):
                     key = f"lorem_{i}"
@@ -80,10 +98,13 @@ async def run_interactive_loop(node):
             else:
                 print("Invalid input.")
         elif action == "g":
-            t = (await aioconsole.ainput("Enter type key [k], image [img], lorem mode [l]: "))
+            t = (await aioconsole.ainput("Enter type key [k], image [img], defined img [ai], lorem mode [l]: "))
             if t == "k":
                 key = (await aioconsole.ainput("Enter the key: "))
                 print(await get_str(node, key.strip()))
+            elif t == "ai":
+                for name in DEFINED_IMG_NO_EXTENSION:
+                    await get_img(node, name)
             elif t == "l":
                 for i in range(0, 1005, 5):
                     key = f"lorem_{i}"
