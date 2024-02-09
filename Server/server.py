@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import sys
 
 from kademlia.network import Server
 
@@ -15,11 +16,12 @@ loop = asyncio.get_event_loop()
 loop.set_debug(True)
 
 server = Server()
-loop.run_until_complete(server.listen(8468))
+loop.run_until_complete(server.listen(int(sys.argv[1])))
 
 try:
     loop.run_forever()
 except KeyboardInterrupt:
+    log.debug("Server stopped.")
     pass
 finally:
     server.stop()

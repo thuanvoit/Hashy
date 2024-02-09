@@ -8,25 +8,29 @@ import io
 import json
 from kademlia.network import Server
 import re
+import socket
+from contextlib import closing
 
 
 async def run():
     server = Server()
-    await server.listen(8469)
-    bootstrap_node = ('127.0.0.1', 8468)
+    # Start the server on the specified port
+    await server.listen(int(sys.argv[2]))
+    # connect to the server port
+    bootstrap_node = ('127.0.0.1', int(sys.argv[1]))
     await server.bootstrap([bootstrap_node])
-    
+
     while True:
         file_path = input(
             "Enter the file path or key:value pair, [q to quit]: ")
 
         if file_path.lower() == "q":
-          server.stop()
-          break
+            server.stop()
+            break
 
         # sometimes file_path has '' around it
         if file_path.startswith("'") and file_path.endswith("'") \
-            or file_path.startswith('"') and file_path.endswith('"'):
+                or file_path.startswith('"') and file_path.endswith('"'):
             file_path = file_path[1:-1]
 
         print(os.path.isfile(file_path))
@@ -35,7 +39,7 @@ async def run():
                 # extract file name from file path without extension
                 file_name = re.search(
                     r"([a-zA-Z0-9\s_\\.\-\(\):])+(.jpg|.jpeg|.png|.gif)$", file_path)
-                
+
                 filename = file_name.group(0).split(".")[0]
 
                 fileext = file_name.group(0).split(".")[1]
@@ -54,10 +58,8 @@ async def run():
                 await server.set(filename, len(chunks))
                 await server.set(f"{filename}_ext", fileext)
 
-
                 for i in range(len(chunks)):
                     print(f"Sending chunk {i}/{len(chunks)}")
-                    
 
                     await server.set(f"{filename}_{i}", chunks[i])
 
@@ -72,7 +74,7 @@ async def run():
             await server.set(key, value)
 
         print("\033c", end="")
-    
+
     server.stop()
 
 
@@ -89,11 +91,6 @@ def img_encoder(filepath, fileext):
     img = Image.open(filepath, 'r')
     buf = io.BytesIO()
 
-    # basewidth = 500
-    # wpercent = (basewidth / float(img.size[0]))
-    # hsize = int((float(img.size[1]) * float(wpercent)))
-    # img = img.resize((basewidth, hsize))
-
     fileext = fileext.lower()
 
     if (fileext == "jpg" or fileext == "jpeg"):
@@ -105,10 +102,5 @@ def img_encoder(filepath, fileext):
     return byte_im
 
 
-
 if __name__ == "__main__":
     asyncio.run(run())
-
-
-        
-

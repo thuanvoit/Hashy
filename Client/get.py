@@ -7,6 +7,7 @@ from PIL import Image
 import io
 import json
 from kademlia.network import Server
+import sys
 
 # handler = logging.StreamHandler()
 # formatter = logging.Formatter(
@@ -19,8 +20,8 @@ from kademlia.network import Server
 
 async def run():
     server = Server()
-    await server.listen(8469)
-    bootstrap_node = ('127.0.0.1', 8468)
+    await server.listen(int(sys.argv[2]))
+    bootstrap_node = ('127.0.0.1', int(sys.argv[1]))
     await server.bootstrap([bootstrap_node])
 
     while True:
@@ -36,9 +37,14 @@ async def run():
             print(f"File {filename} not found")
             continue
 
+        if type(chunk_len) == str:
+            print(f"{filename}:{chunk_len}")
+            continue
+
         fileext = await server.get(f"{filename}_ext")
 
         chunks = []
+        
 
         for i in range(chunk_len):
             print(f"Getting chunk {i}/{chunk_len}")
