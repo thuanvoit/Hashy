@@ -1,0 +1,14 @@
+.DS_Store
+
+# Python-specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyz
+*.pyw
+*.pyi
+*.pycachefile
+
+*/download/
+*/report/
