@@ -22,12 +22,12 @@ IMG_READ_HEADER = ['File_Name', 'File_Size', 'Number_Chunks', 'Read_Duration']
 STR_WRITE_HEADER = ['Key', 'Value_Length', 'Write_Duration']
 STR_READE_HEADER = ['Key', 'Value_Length', 'Read_Duration']
 
-DEFINED_IMG = ['1_24kb.jpeg', 
-               '2_360kb.png', 
-               '3_2mb.jpg', 
-               '4_10mb.png', 
-               '5_15mb.png', 
-               '6_18mb.png', 
+DEFINED_IMG = ['1_24kb.jpeg',
+               '2_360kb.png',
+               '3_2mb.jpg',
+               '4_10mb.png',
+               '5_15mb.png',
+               '6_18mb.png',
                '7_19mb.png']
 
 DEFINED_IMG_NO_EXTENSION = ['1_24kb',
@@ -37,6 +37,9 @@ DEFINED_IMG_NO_EXTENSION = ['1_24kb',
                             '5_15mb',
                             '6_18mb',
                             '7_19mb']
+
+node = None
+
 
 def init_csv(filename, header):
     if not os.path.exists("report"):
@@ -55,12 +58,12 @@ def write_csv(filename, data):
         file.close()
 
 
-async def start_node(port=int(sys.argv[1]), bootstrap_node=int(sys.argv[2])):
+async def init_node(port=int(sys.argv[1]), existing_node=int(sys.argv[2])):
     server = Server()
     await server.listen(port)
-    if bootstrap_node:
-        bootstrap_address = ("127.0.0.1", bootstrap_node)
-        await server.bootstrap([bootstrap_address])
+    if existing_node:
+        bootstrap_node = ("127.0.0.1", existing_node)
+        await server.bootstrap([bootstrap_node])
     return server
 
 
@@ -72,7 +75,7 @@ async def get(node, key):
     return await node.get(key)
 
 
-async def run_interactive_loop(node):
+async def run(node):
     while True:
         action = (await aioconsole.ainput("Set [s], Get [g], or Quit [q]: "))
         if action == "q":
@@ -198,7 +201,6 @@ async def set_img(node, filepath):
             average_chunk_size = len(data) / len(chunks)
 
             # report
-
             write_csv('./report/img_write.csv',
                       [file_name,
                        os.path.getsize(filepath),
@@ -263,12 +265,14 @@ def file_saver(data, filename):
 
 async def main():
 
-    node = None
     try:
-        node = await start_node()
-        await run_interactive_loop(node)
+        node = await init_node()
+        await run(node)
+    except KeyboardInterrupt:
+        print("Shutting down...")
     finally:
         if node:
+            print("Stopping this node...")
             node.stop()
 
 if __name__ == "__main__":
@@ -278,4 +282,11 @@ if __name__ == "__main__":
     init_csv('./report/str_write.csv', STR_WRITE_HEADER)
     init_csv('./report/str_read.csv', STR_READE_HEADER)
 
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Shutting down...")
+    finally:
+        if node:
+            print("Stopping this node...")
+            node.stop()
