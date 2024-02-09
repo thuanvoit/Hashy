@@ -14,13 +14,16 @@ from lorem_text import lorem
 # disable logging
 logging.getLogger('kademlia').setLevel(logging.CRITICAL)
 
-
+# for csv headers
 IMG_WRITE_HEADER = ['File_Name', 'File_Size',
                     'Number_Chunks', 'Average_Chunk_Size', 'Number_Bytes', 'Write_Duration']
 IMG_READ_HEADER = ['File_Name', 'File_Size', 'Number_Chunks', 'Read_Duration']
 
 STR_WRITE_HEADER = ['Key', 'Value_Length', 'Write_Duration']
 STR_READE_HEADER = ['Key', 'Value_Length', 'Read_Duration']
+
+
+# for testing image upload and download
 
 DEFINED_IMG = ['1_24kb.jpeg',
                '2_360kb.png',
@@ -44,8 +47,13 @@ node = None
 def init_csv(filename, header):
     if not os.path.exists("report"):
         os.makedirs("report")
+
+    # remove file if exists
+    if os.path.isfile(filename):
+        os.remove(filename)
+
     if not os.path.isfile(filename):
-        with open(filename, 'a+') as file:
+        with open(filename, 'w') as file:
             writer = csv.writer(file)
             writer.writerow(header)
             file.close()
@@ -57,8 +65,10 @@ def write_csv(filename, data):
         writer.writerow(data)
         file.close()
 
+# connect to the network and listen to the port
 
-async def init_node(port=int(sys.argv[1]), existing_node=int(sys.argv[2])):
+
+async def init_node(port=int(sys.argv[2]), existing_node=int(sys.argv[1])):
     server = Server()
     await server.listen(port)
     if existing_node:
@@ -66,23 +76,33 @@ async def init_node(port=int(sys.argv[1]), existing_node=int(sys.argv[2])):
         await server.bootstrap([bootstrap_node])
     return server
 
+# DHT set
+
 
 async def set(node, key, value):
     await node.set(key, value)
+
+# DHT get
 
 
 async def get(node, key):
     return await node.get(key)
 
+# DHT run
+
 
 async def run(node):
     while True:
-        action = (await aioconsole.ainput("Set [s], Get [g], or Quit [q]: "))
+        action = (await aioconsole.ainput("Set [s], Get [g], Clear Screen[c] or Quit [q]: "))
+        action = action.lower().strip()
         if action == "q":
             print("Quit")
             break
+        elif action == "c":
+            print("\033c", end="", flush=True)
         elif action == "s":
             t = (await aioconsole.ainput("Enter type <key,value> [kv], image [img], defined img [ai] lorem mode[l]: "))
+            t = t.lower().strip()
             if t == "img":
                 filepath = (await aioconsole.ainput("Enter the file path [.jpg|.jpeg|.png]: "))
                 await set_img(node, filepath.strip())
@@ -90,10 +110,15 @@ async def run(node):
                 for img in DEFINED_IMG:
                     await set_img(node, f"to_send/{img}")
             elif t == "l":
+                '''
+                Lorem ipsum mode to test the DHT
+                Set 200 key, value pairs with key as lorem_{i} and value as lorem ipsum text
+                '''
                 for i in range(0, 1005, 5):
                     key = f"lorem_{i}"
                     value = lorem.words(i)
                     await set_str(node, key, value)
+                print("Set 1000 lorem ipsum key, value pairs.")
             elif t == "kv":
                 key = (await aioconsole.ainput("Enter the key: "))
                 value = (await aioconsole.ainput("Enter the value: "))
@@ -112,6 +137,7 @@ async def run(node):
                 for i in range(0, 1005, 5):
                     key = f"lorem_{i}"
                     await get_str(node, key)
+                print("Get 1000 lorem ipsum key, value pairs.")
             elif t == "img":
                 key = (await aioconsole.ainput("Enter img name: "))
                 await get_img(node, key.strip())
@@ -141,6 +167,13 @@ async def get_str(node, key):
 
 
 async def get_img(node, key):
+    '''
+    Get image from DHT
+    1. Get the number of chunks
+    2. Get all the chunks
+    3. Join the chunks to form the original image
+    4. Save the image to download folder
+    '''
     chunks = []
 
     start_time = time.time()
@@ -168,6 +201,17 @@ async def get_img(node, key):
 
 
 async def set_img(node, filepath):
+    '''
+    Set image to DHT
+    Each key is limited to len() <= 8000
+    For any image, lower quality to 85% of original quality
+    Then, it will be broken into chunks of 8000 bytes
+
+    ONLY take in .jpg, .jpeg, .png files, test limit to 20mb file
+
+    1. Set IMAGE_NAME:NUMBER_OF_CHUNKS
+    2. SET all the chunks with the key IMAGE_NAME_i where i is the index of the chunk
+    '''
     if filepath.startswith("'") and filepath.endswith("'") \
             or filepath.startswith('"') and filepath.endswith('"'):
         filepath = filepath[1:-1]
@@ -184,16 +228,16 @@ async def set_img(node, filepath):
             data = img_encoder(filepath)
 
             chunks = []
-            chunks = break_into_chunks(data, 8000)
+            chunks = break_into_chunks(data)
 
             start_time = time.time()
 
             await set(node, file_name, len(chunks))
 
             for i in range(len(chunks)):
-                print(f"Uploading chunk {i+1}/{len(chunks)}")
-                print("\033c", end="")
                 await set(node, f"{file_name}_{i}", chunks[i])
+
+            print(f"File {file_name} uploaded")
 
             # report
             write_duration = time.time() - start_time
@@ -213,7 +257,7 @@ async def set_img(node, filepath):
             pass
 
 
-def break_into_chunks(original_bytes, chunk_size):
+def break_into_chunks(original_bytes, chunk_size=8000):
     chunks = []
     for i in range(0, len(original_bytes), chunk_size):
         chunk = original_bytes[i:i + chunk_size]
@@ -222,7 +266,10 @@ def break_into_chunks(original_bytes, chunk_size):
 
 
 def img_encoder(filepath):
-    # read img
+    '''
+    lower quality to 85% of original quality
+    use JPEG format to reduce file size
+    '''
     img = Image.open(filepath, 'r')
     buf = io.BytesIO()
 
@@ -243,6 +290,9 @@ def img_decoder(data):
 
 
 def join_byte_chunks(chunks):
+    '''
+    Join byte chunks to form a single byte string, result in original image
+    '''
     # Concatenate all the byte string chunks
     joined_bytes = b''.join(chunks)
     return joined_bytes
@@ -277,6 +327,10 @@ async def main():
 
 if __name__ == "__main__":
 
+    # clear the screen at run
+    print("\033c", end="", flush=True)
+
+    # create csv files for report
     init_csv('./report/img_write.csv', IMG_WRITE_HEADER)
     init_csv('./report/img_read.csv', IMG_READ_HEADER)
     init_csv('./report/str_write.csv', STR_WRITE_HEADER)
