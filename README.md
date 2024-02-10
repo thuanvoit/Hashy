@@ -4,6 +4,8 @@ Problem 2 Option 1
 
 Experience with DHT with kademlia library in Python 3.
 
+A distributed hash table (DHT) is a decentralized storage system that provides lookup and storage schemes similar to a hash table, storing key-value pairs. Each node in a DHT is responsible for keys along with the mapped values.
+
 ## Requirements
 
 -   Tested on Mac OS only, this can be run on Linux and Window system with some modification.
