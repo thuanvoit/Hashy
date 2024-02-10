@@ -1,0 +1,5 @@
+asyncio==3.4.3
+kademlia==2.2.2
+aioconsole==0.7.0
+pillow==10.2.0
+lorem-text==2.1
